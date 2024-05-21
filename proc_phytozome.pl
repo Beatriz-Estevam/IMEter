@@ -154,9 +154,9 @@ sub process_species{
 	while (<$gfh>) {
 		next if /^#/;
 		my ($seq, $so, $fea, $beg, $end, $sco, $str, $frm, $group) = split;
-		my ($id) = $group =~ /ID=PAC:(\d+)/;
+		my ($id) = $group =~ /pacid=(\d+)/;
 		if ($fea eq 'mRNA') {
-			my ($name) = $group =~ /Name=(\S+?);/;
+			my ($name) = $group =~ /Name=(\S+?)/;
 			$transcripts{$id}{name} = $name;
 			$transcripts{$id}{longest} = 1 if $group =~ /longest=1/;
 		}
@@ -388,6 +388,7 @@ sub process_species{
 	foreach my $type (qw(exon intron five_prime_UTR three_prime_UTR)) {
 		# need counter for FASTA header
 		my $n = 0;
+		print "$type\n";
 		
 		# prepare output file
 		my $output_file = "${species}_IME_$type.fa";
@@ -396,7 +397,10 @@ sub process_species{
 		open(my $out, ">", $output_file) or die "Cannot write to $output_file";
 
 		foreach my $id (sort keys %transcripts) {
-	
+			if ($id !~ /^\d{8}$/) {
+    			$id =~ /PAC:(\d+)/;
+    			$id = $1;
+			}			
 			# skip genes with errors
 			next if ($transcripts{$id}{error});
 
@@ -479,7 +483,10 @@ sub process_species{
 	my $kept = 0;
 
 	foreach my $id (keys %transcripts) {
-
+		if ($id !~ /^\d{8}$/) {
+    		$id =~ /PAC:(\d+)/;
+    		$id = $1;
+		}
 #		my $u5 = exists $transcripts{$id}{five_prime_UTR};
 #		my $u3 = exists $transcripts{$id}{three_prime_UTR};
 		my $u5 = @{$transcripts{$id}{five_prime_UTR}};
@@ -530,18 +537,16 @@ TRANSCRIPTS_WITH_BOTH_UTRS: $complete
 }
 
 sub extract_seq {
-	my ($feature, $strand, $entry) = @_;
-	
-	my $seq = substr($entry->{SEQ}, $feature->{beg} -1,
-		$feature->{end} - $feature->{beg} + 1);
+    my ($feature, $strand, $entry) = @_;
 
-	if ($strand eq '-') {
-		$seq =~ tr[ACGTRYMKWSBDHV]
-		          [TGCAYRKMWSVHDB];
-		$seq = reverse $seq;
-	}
-	
-	return $seq;
+    my $seq = substr($entry->{SEQ}, $feature->{beg} - 1, $feature->{end} - $feature->{beg} + 1);
+
+    if ($strand eq '-') {
+        $seq =~ tr[ACGTRYMKWSBDHV][TGCAYRKMWSVHDB];
+        $seq = reverse $seq;
+    }
+
+    return $seq;
 }
 
 
